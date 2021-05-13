@@ -1,0 +1,22 @@
+import numpy as np
+import pandas as pd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import json
+import seaborn as sns
+movie["genres"]=movie["genres"].str.replace("[","").str.replace("]","").str.replace(" ","").str.replace("'","")#这一步用于去掉类型字符串中多余的部分
+movie["genres"]=movie["genres"].str.split(",")
+list=[]
+dic=dict()
+for i in movie["genres"]:
+    for j in i:
+        if (j in list)==False:
+            list.append(j)
+            dic[j]=0
+        else:
+            dic[j]+=1
+temgen=pd.Series(dic)
+gen=pd.DataFrame({"number":temgen})
+gen=gen.sort_values(by="number",ascending=False)
+sns.set()
+gen.plot(kind="bar")
