@@ -33,3 +33,9 @@ for index,i in zip(movie.index,movie["spoken_languages"]):
     for j in range(len(i)):
         list5.append((i[j]["name"]))
     movie.loc[index,"spoken_languages"]=str(list5)
+
+    for index,i in zip(credit.index,credit["crew"]):
+    list7=[]
+    for j in range(len(i)):
+        list7.append(i[j]["name"])
+    credit.loc[index,"crew"]=str(list7)
