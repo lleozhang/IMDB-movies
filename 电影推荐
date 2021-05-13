@@ -1,0 +1,199 @@
+#电影推荐部分
+#by 刘雨哲
+import pandas as pd
+import numpy as np
+import json
+from sklearn.neighbors import NearestNeighbors
+
+#一、数据读取
+
+# 读取r'tmdb_5000_credits.csv文件给DataOfcredits
+DataOfcredits = pd.read_csv(r'tmdb_5000_credits.csv')
+columns = ['cast', 'crew']
+for column in columns:
+    DataOfcredits[column] = DataOfcredits[column].apply(json.loads)#用json.loads读取字典数据
+# 读取tmdb_5000_movies.csv文件给DataOfmovies
+DataOfmovies = pd.read_csv(r'tmdb_5000_movies.csv')
+columns = ['genres', 'keywords']
+for column in columns:
+    DataOfmovies[column] = DataOfmovies[column].apply(json.loads)#用json.loads读取字典数据
+
+# 定义提取器，其中在crew中只抽取导演的名字
+def extractor(feature):
+    if len(feature) == 0: #为空
+        return pd.np.nan
+    
+    # 寻找导演
+    if 'job' in feature[0].keys():
+        for i in range(len(feature)):
+            if feature[i]['job'] == 'Director':#crew中只保留导演
+                return feature[i]['name']
+    a = []
+    for i in range(len(feature)):
+        a.append(feature[i]['name'])
+    return '|'.join(a)       
+# 抽取信息
+columns = ['genres', 'keywords']
+DataOfmovies[columns] = DataOfmovies[columns].applymap(extractor)
+columns = ['cast', 'crew']
+DataOfcredits[columns] = DataOfcredits[columns].applymap(extractor)
+
+# 经过提取，crew和cast的性质已经发生了变化，应该更改列名
+DataOfcredits.rename(columns={'cast': 'actors', 'crew': 'director'}, inplace=True)#inplace为true表示在原始基础上修改
+
+# 合并，生成data
+data = pd.merge(DataOfcredits, DataOfmovies, left_on='movie_id', right_on='id')
+
+# 二、数据处理
+# 1.去掉无用特征
+# 去掉电影的时长、成本等无关因素和重复的信息
+data.drop(['id','original_language', 'budget','homepage', 'original_title'], axis=1, inplace=True)
+data.drop(['status', 'tagline', 'revenue', 'runtime','title_y'], axis=1, inplace=True)
+#删掉了重复的元素，改列名
+data.rename(columns={'movie_id': 'id', 'title_x': 'title', 'release_date': 'date'}, inplace=True)
+
+# 2.利用year计算出对应的decade，作为后面的判据之一
+data['date'] = pd.to_datetime(data['date']).apply(lambda x: x.year) 
+data.rename(columns={'date': 'year'}, inplace=True)#把日期变为年份
+data['decade'] = data['year'].apply(lambda x: (x-1900)//10*10)
+
+# 3.丢掉缺失值
+data.dropna(axis=0, subset=['actors', 'director', 'genres'], inplace=True)
+data.isnull().sum()
+data.dropna(axis=0, subset=['keywords'], inplace=True)
+data.drop('overview', axis=1, inplace=True)
+data.isnull().sum()
+
+# 三. 进行推荐
+# 1.预选
+#对于给定的一部电影，选择它的类型、演员、导演、关键字这四个特征
+#据此给出排名前50的电影
+# 2.终选
+#对于初选出的的50部电影，再进一步考虑这些电影的年代、评分、流行度等等，据此来判断好坏
+#最终根据打分，推荐排名前10的电影作为最终结果
+
+###初选
+#如下是提取给定电影的类别、关键词、演员、导演的函数
+def extractor2(standardID):
+    target_features = []
+    value_features = []
+    features = ['genres', 'keywords', 'actors', 'director']
+    datac = data.copy()
+    content_list=datac[features].loc[datac.id==standardID].applymap(lambda x: x.split('|')).values[0]
+    # 逐个提取
+    for i in range(len(content_list)):
+        target_features.extend(content_list[i])
+        value_features.extend([features[i]] * len(content_list[i]))
+    return target_features, value_features
+
+# 求出所有电影的不同特征
+featuresOfall = {}
+for i in range(len(data)): 
+    movie_id = data['id'].iloc[i]
+    featuresOfall[movie_id] = {}
+    for feature in [ 'genres', 'keywords', 'actors', 'director']:
+        featuresOfall[movie_id][feature] = data[feature].iloc[i].split('|')
+
+# 求特征向量
+def matrix(standardID):
+    # 目标电影的特征
+    target_features, value_features = extractor2(standardID)
+    # 初始化
+    datac = data.copy()
+    res_matrix = pd.DataFrame(np.zeros([len(datac), len(target_features)]), index=datac['id'].values, columns=target_features)
+    ## 遍历特征
+    for i in range(len(value_features)):
+        feature = value_features[i]
+        # 遍历电影
+        for movie_id in datac['id'].values:
+            if target_features[i] in featuresOfall[movie_id][feature]:#如果特征相同
+                res_matrix.loc[movie_id, target_features[i]] = 1 #此坐标记为1
+    return res_matrix
+
+# 取出和目标电影相似的50部电影，利用了NearestNeighbors函数
+def top50(standardID):
+    features_df = matrix(standardID)
+    samples = features_df.values.tolist()
+    neigh = NearestNeighbors(n_neighbors=51, metric='euclidean')
+    neigh.fit(samples)
+    top50_dist, top50_indice = neigh.kneighbors([list(np.ones(len(features_df.columns)))])
+    top50_movieID = []
+    for indice in top50_indice[0]:
+        top50_movieID.append(data['id'].values[indice])
+    return top50_movieID[1:]
+
+###终选
+#利用电影的流行度、评分，上映时间和评分人数，对40部电影进一步打分。
+#根据打分，推荐排名前10的电影作为最终结果
+# 参考正态分布设计三个权重,式中x是输入，ave是均值，delta是偏度
+
+ave_vote = data['vote_average'].max()
+def calculate_weight_vote(x, delta, ave=ave_vote):
+    return np.exp(-(x-ave)**2/(2*(np.log(1000+delta)**2)))
+
+def calculate_weight_popularity(popularity, score):
+    return np.log(2+ np.exp(score) / popularity)
+
+def calculate_weight_years(x, ave, delta=20):
+    return np.exp(-(x-ave)**2/(2*delta**2))
+
+
+
+# 对50部电影分别计算三种权重
+def calculate(standardID):
+    weight_year = {}
+    weight_popularity = {}
+    weight_vote = {}
+    # 选出的50部电影ID
+    top50_movies = top50(standardID)
+    for movie in top50_movies:
+        weight_year[movie] = 0
+        weight_popularity[movie] = 0
+        weight_vote[movie] = 0
+    # 计算权重
+    datac = data.copy()
+    weight_of_year = datac['year'].apply(lambda x: calculate_weight_years(x, datac[datac.id==standardID]['year'].values[0])).tolist()
+    weight_of_popularity = datac[['popularity', 'vote_average']].apply(lambda x: calculate_weight_popularity(x.popularity, x.vote_average), axis=1).tolist()
+    weight_of_vote = datac[['vote_count', 'vote_average']].apply(lambda x: calculate_weight_vote(x.vote_average, x.vote_count), axis=1).tolist()
+    # 求出电影id对应的行
+    row_number = {}
+    for i in range(len(data)):
+        ID = data['id'].iloc[i]
+        row_number[ID] = i
+    # 填写50部电影的三个权重
+    for movie in top50_movies:
+        # 电影对应的行索引
+        index = row_number[movie]
+        # 取出对应权重
+        weight_year[movie] = weight_of_year[index] 
+        weight_popularity[movie] = weight_of_popularity[index]
+        weight_vote[movie] = weight_of_vote[index]
+    # 计算得分
+    total_score = {}
+    for movie in top50_movies:
+        total_score[movie] = weight_year[movie]  * weight_vote[movie] * weight_popularity[movie]
+    return dict(sorted(total_score.items(), key=lambda x: x[1], reverse=True))
+
+# 按照排名取出前10个输出，作为最终的推荐
+def recommend(standardID):
+    topten_id = list(calculate(standardID).keys())[:10]# 取出排名最高的10部电影
+    topten = []
+    datac = data.copy()
+    for ID in topten_id:
+        title = datac[datac.id==ID]['title'].values[0]
+        topten.append(title)
+    print('当前电影为', datac[datac.id==standardID]['title'].values[0])
+    print('据此推荐的10部电影是')#输出推荐的结果
+    i=0
+    while i<10:
+        print(i+1,end="、")
+        print(topten[i])
+        i+=1
+    print()
+    return topten
+
+recommend(36955)#用《真实的谎言》测试一下（看看符不符合我本人的预期）
+recommend(19995)
+
+
+
