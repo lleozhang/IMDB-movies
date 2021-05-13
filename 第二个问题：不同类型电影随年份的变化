@@ -1,0 +1,20 @@
+movie.loc[movie["release_date"].isnull(),"title"]
+movie["release_date"]=movie["release_date"].fillna("2014-06-01")#补全缺失的数据
+movie["release_year"]=pd.to_datetime(movie["release_date"],format="%Y-%m-%d").dt.year#生成一列，专门提取电影上映年份
+
+flag=0
+for i in lis:
+    dic=dict()
+    for j in range(1916,2018):
+        dic[j]=0
+    for index in movie.index:
+        if i in movie.loc[index,"genres"]:
+            dic[movie.loc[index,"release_year"]]+=1
+    temnum=pd.Series(dic)
+    nnum=pd.DataFrame({"year":temnum.index,i:temnum})
+    if flag==1:
+        nnum=pd.merge(onum,nnum)
+    onum=nnum
+    flag=1
+for i in lis:
+    plt.plot(nnum["year"],nnum[i],label=i,c="r")#画图，这个图不好看，还需要加工
