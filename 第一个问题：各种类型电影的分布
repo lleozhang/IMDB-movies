@@ -20,3 +20,30 @@ gen=pd.DataFrame({"number":temgen})
 gen=gen.sort_values(by="number",ascending=False)
 sns.set()
 gen.plot(kind="bar")
+
+movie.loc[movie["release_date"].isnull(),"title"]
+movie["release_year"]=pd.to_datetime(movie["release_date"],format="%Y-%m-%d").dt.year#生成一列，专门提取电影上映年份
+flag=0
+for i in range(1970,2018):
+    if i in movie["release_year"]:
+        dic=dict()
+        temlis=[]
+        for index,j in zip(movie.index,movie["release_year"]):
+            if i==j:
+                for k in movie.loc[index,"genres"]:
+                    if k in temlis:
+                        dic[k]+=1
+                    else:
+                        temlis.append(k)
+                        dic[k]=1
+        for k in lis:
+            if (k in temlis)==False:
+                dic[k]=0
+        temnum=pd.Series(dic)
+        tatnum=pd.DataFrame({"genres":lis,str(i):temnum})
+        if flag==1:
+            tatnum=pd.merge(tatnum,lasnum)
+        else:
+            flag=1;
+        lasnum=tatnum
+tatnum.plot()
