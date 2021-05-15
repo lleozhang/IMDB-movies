@@ -1,0 +1,52 @@
+movie["keywords"]=movie["keywords"].str.replace("[","").str.replace("]","").str.replace("'","").str.replace(" ","")#这一步用于去掉类型字符串中多余的部分
+movie["keywords"]=movie["keywords"].str.split(",")
+#这里需要做一个说明，去掉空格之后关键词会变得难看，但是如果不去掉空格相同的关键词可能因为空格的不同被区分
+word_lis=[]
+word_dic=dict()
+cnt=0
+for index in movie.index:
+    for i in movie.loc[index,"keywords"]:
+        if i !="":
+            if i in word_lis:
+                word_dic[i]+=1
+            else:
+                word_dic[i]=1
+                word_lis.append(i)
+                cnt+=1
+word_se=pd.Series(word_dic)
+word_da=pd.DataFrame({"number":word_se})
+word_da=word_da.sort_values(by="number",ascending=False)
+plt.rcParams['figure.figsize'] = (15.0, 12.0) 
+word_da[:10].plot(kind="bar")
+from wordcloud import WordCloud
+wc = WordCloud(max_words=100,width=2000,height=1200,)
+word_cloud = wc.generate_from_frequencies(word_dic)
+plt.imshow(word_cloud)
+plt.axis("off")
+plt.show()
+#生成词云图
+
+i=10
+plt.rcParams['figure.figsize'] = (12.0, 15.0) 
+figg=plt.figure()
+while i<=100:
+    wor_lis=[]
+    wor_dic=dict()
+    for index in movie.index:
+        tem=movie.loc[index,"release_year"]
+        if tem in range(1916+i-10,1916+i):
+            for j in movie.loc[index,"keywords"]:
+                if j !="":
+                    if j in wor_lis:
+                        wor_dic[j]+=1
+                        wor_lis.append(j)
+                    else:
+                        wor_dic[j]=1
+                        wor_lis.append(j)
+    wor_se=pd.Series(wor_dic)
+    wor_da=pd.DataFrame({"number":wor_se})
+    wor_da=wor_da.sort_values(by="number",ascending=False)
+    plt.title(str(1916+i-10)+"~"+str(1916+i))
+    wor_da[:10].plot(kind="bar")
+    i+=10
+#以十年为周期可视化排名前十的关键词
