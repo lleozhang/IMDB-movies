@@ -16,5 +16,30 @@ for i in lis:
         nnum=pd.merge(onum,nnum)
     onum=nnum
     flag=1
+plt.rcParams['figure.figsize'] = (30.0, 48.0) 
+fig=plt.figure()
+a=2
+ax1 = fig.add_subplot(a,1,1)
+ax2 = fig.add_subplot(a,1,2)
+
+from matplotlib.pyplot import MultipleLocator #导入此类，设置坐标轴间隔
+
+x_major_locator=MultipleLocator(1)
+ax1.xaxis.set_major_locator(x_major_locator)
+y_major_locator=MultipleLocator(5)
+ax1.yaxis.set_major_locator(y_major_locator)
+col_lis=['#F0F8FF','#FAEBD7','#00FFFF','#7FFFD4','#F0FFFF','#F5F5DC','#FFE4C4','#000000','#FFEBCD','#0000FF','#8A2BE2','#A52A2A','#DEB887','#5F9EA0','#7FFF00','#D2691E','#FF7F50','#6495ED','#FFF8DC','#DC143C','#00FFFF','#00008B','#008B8B','#B8860B','#A9A9A9','#006400','#BDB76B','#8B008B','#556B2F','#FF8C00','#9932CC','#8B0000','#E9967A','#8FBC8F','#483D8B','#2F4F4F','#00CED1','#9400D3','#FF1493','#00BFFF','#696969','#1E90FF','#B22222','#FFFAF0','#228B22','#FF00FF','#DCDCDC','#F8F8FF','#FFD700','#DAA520','#808080','#008000','#ADFF2F','#F0FFF0','#FF69B4','#CD5C5C','#4B0082','#FFFFF0','#F0E68C','#E6E6FA','#FFF0F5','#7CFC00','#FFFACD','#ADD8E6','#F08080','#E0FFFF','#FAFAD2','#90EE90','#D3D3D3','#FFB6C1','#FFA07A','#20B2AA','#87CEFA','#778899','#B0C4DE','#FFFFE0','#00FF00','#32CD32','#FAF0E6','#FF00FF','#800000','#66CDAA','#0000CD','#BA55D3','#9370DB','#3CB371','#7B68EE','#00FA9A','#48D1CC','#C71585','#191970','#F5FFFA','#FFE4E1','#FFE4B5','#FFDEAD','#000080','#FDF5E6','#808000','#6B8E23','#FFA500','#FF4500','#DA70D6','#EEE8AA','#98FB98','#AFEEEE','#DB7093','#FFEFD5','#FFDAB9','#CD853F','#FFC0CB','#DDA0DD','#B0E0E6','#800080','#FF0000','#BC8F8F','#4169E1','#8B4513','#FA8072','#FAA460','#2E8B57','#FFF5EE','#A0522D','#C0C0C0','#87CEEB','#6A5ACD','#708090','#F5F5F5','#FFFF00','#9ACD32']
+cnt=50
 for i in lis:
-    plt.plot(nnum["year"],nnum[i],label=i,c="r")#画图，这个图不好看，还需要加工
+    ax1.plot(nnum["year"][80:102],nnum[i][80:102],label=i,c=col_lis[cnt])
+    cnt+=2
+ax1.legend()
+x_major_locator=MultipleLocator(2)
+y_major_locator=MultipleLocator(1)
+ax2.xaxis.set_major_locator(x_major_locator)
+ax2.yaxis.set_major_locator(y_major_locator)
+cnt=50
+for i in lis:
+    ax2.plot(nnum["year"][:80],nnum[i][:80],label=i,c=col_lis[cnt])
+    cnt+=2
+ax2.legend()
