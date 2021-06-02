@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import json
-from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import NearestNeighbors 
 
 #一、数据读取
 
@@ -45,7 +45,6 @@ DataOfcredits.rename(columns={'cast': 'actors', 'crew': 'director'}, inplace=Tru
 data = pd.merge(DataOfcredits, DataOfmovies, left_on='movie_id', right_on='id')
 
 # 二、数据处理
-# 1.去掉无用特征
 # 去掉电影的时长、成本等无关因素和重复的信息
 data.drop(['id','original_language', 'budget','homepage', 'original_title'], axis=1, inplace=True)
 data.drop(['status', 'tagline', 'revenue', 'runtime','title_y'], axis=1, inplace=True)
@@ -110,11 +109,11 @@ def matrix(standardID):
                 res_matrix.loc[movie_id, target_features[i]] = 1 #此坐标记为1
     return res_matrix
 
-# 取出和目标电影相似的50部电影，利用了NearestNeighbors函数
+# 取出和目标电影相似的50部电影
 def top50(standardID):
     features_df = matrix(standardID)
     samples = features_df.values.tolist()
-    neigh = NearestNeighbors(n_neighbors=51, metric='euclidean')
+    neigh = NearestNeighbors(n_neighbors=50)#利用NearestNeighbors函数
     neigh.fit(samples)
     top50_dist, top50_indice = neigh.kneighbors([list(np.ones(len(features_df.columns)))])
     top50_movieID = []
@@ -136,8 +135,6 @@ def calculate_weight_popularity(popularity, score):
 
 def calculate_weight_years(x, ave, delta=20):
     return np.exp(-(x-ave)**2/(2*delta**2))
-
-
 
 # 对50部电影分别计算三种权重
 def calculate(standardID):
@@ -179,7 +176,7 @@ def recommend(standardID):
     topten_id = list(calculate(standardID).keys())[:10]# 取出排名最高的10部电影
     topten = []
     datac = data.copy()
-    for ID in topten_id:
+    for ID in topten_id:#记录这十部电影的名字
         title = datac[datac.id==ID]['title'].values[0]
         topten.append(title)
     print('当前电影为', datac[datac.id==standardID]['title'].values[0])
@@ -190,7 +187,6 @@ def recommend(standardID):
         print(topten[i])
         i+=1
     print()
-    return topten
 
 recommend(36955)#用《真实的谎言》测试一下（看看符不符合我本人的预期）
 recommend(19995)
